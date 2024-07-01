@@ -16,7 +16,8 @@ MonoBehaviour:
   author: Blananas2
   description: "Throw your superstitions out the window if you want to make it out
     of here alive.\n\nCreated for the 6th KTANE Modding Jam (Model restriction)\n\nModule
-    by Blananas2\r\n\r\nModule ID: triskaideka\nThe manual can be found here: https://ktane.timwi.de/HTML/Triskaideka.html"
+    by Blananas2\r\nModel by Red Penguin\n\r\nModule ID: triskaideka\nThe manual can
+    be found here: https://ktane.timwi.de/HTML/Triskaideka.html"
   version: 
   outputFolder: build
-  previewImage: {fileID: 2800000, guid: 4c807f02a296bc84c8425923d51588a9, type: 3}
+  previewImage: {fileID: 2800000, guid: 80c85fe2cda05cc44a90c267a0b5db14, type: 3}
