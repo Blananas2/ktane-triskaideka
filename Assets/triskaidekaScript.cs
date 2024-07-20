@@ -189,10 +189,10 @@ public class triskaidekaScript : MonoBehaviour {
         int highEnd;
         do { highEnd = Rnd.Range(1, 14); }
             while (highEnd == lowEnd); //they cannot be the same, since we need the needle to move back and forth, not stay in the same place
-        if (lowEnd > highEnd) { //if they're in the wrong order, swap them
-            int whatLowShouldBe = highEnd;
-            highEnd = lowEnd;
-            lowEnd = whatLowShouldBe;
+        if (lowEnd > highEnd) { //if they're in the wrong order, swap them: the below is a trick to swap without creating a new variable using xor
+            lowEnd = lowEnd ^ highEnd;
+            highEnd = lowEnd ^ highEnd;
+            lowEnd = lowEnd ^ highEnd;
         }
         
         int colorLow = Rnd.Range(0, 6); //generate colors
@@ -332,7 +332,7 @@ public class triskaidekaScript : MonoBehaviour {
                 StartCoroutine(SpeakerVibe(0.282f));
                 return;
             }
-            Debug.LogFormat("[Triskaideka #{0}] {1} submit is good.", moduleId, ordinals[submittedNumbers]);
+            Debug.LogFormat("[Triskaideka #{0}] {1} submit is good{2}.", moduleId, ordinals[submittedNumbers], submittedNumbers == 2 ? ", module solved" : "");
             submittedNumbers++;
             if (submittedNumbers == 3) { //solve mod if all three are good
                 StopAllCoroutines();
