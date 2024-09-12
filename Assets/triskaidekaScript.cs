@@ -380,4 +380,81 @@ public class triskaidekaScript : MonoBehaviour {
     bool IsRightHalf (int[] x) { //right half is just are the two ends the extremes at the moment, if so we can play the horn
         return x[0] == 1 && x[1] == 13;
     }
+
+    #pragma warning disable 414
+    private readonly string TwitchHelpMessage = @"!{0} press left/right [Presses the left/right red button, direction can be repeated to press twice] | !{0} submit # [Presses submit button at specified position, position can be omitted to press the button after a strike]";
+    #pragma warning restore 414
+    
+    IEnumerator ProcessTwitchCommand(string command)
+    {
+        if (beeping) {
+            yield return "sendtochaterror You need to wait for the beeping to stop";
+            yield break;
+        }
+        string[] parts = command.Trim().ToLowerInvariant().Split(' ');
+        if (parts[0] == "press") { //feel free to also make it so the presses don't go through if it tries to go outside the range that's prolly nicer but eh
+            if (parts.Length == 2) {
+                switch (parts[1]) {
+                    case "left": Smalls[0].OnInteract(); break;
+                    case "right": Smalls[1].OnInteract(); break;
+                    default: 
+                        yield return "sendtochaterror Specified direction is not valid";
+                        yield break;
+                    break;
+                }
+            } else if (parts.Length == 3) {
+                if (parts[1] != parts[2]) {
+                    yield return "sendtochaterror Specified directions do not match";
+                    yield break;
+                }
+                switch (parts[1]) {
+                    case "left": 
+                        Smalls[0].OnInteract();
+                        yield return new WaitForSeconds(.4f);
+                        Smalls[0].OnInteract();
+                    break;
+                    case "right": 
+                        Smalls[1].OnInteract();
+                        yield return new WaitForSeconds(.4f);
+                        Smalls[1].OnInteract();
+                    break;
+                    default: 
+                        yield return "sendtochaterror Specified direction is not valid";
+                        yield break;
+                    break;
+                }
+            } else {
+                yield return "sendtochaterror " + (parts.Length == 1 ? "Not enough" : "Too many") + " parameters for press command";
+                yield break;
+            }
+        } else if (parts[0] == "submit") {
+            if (hasStruck) {
+                Submit.OnInteract();
+            } else if (parts.Length == 2) {
+                int num = Int32.Parse(parts[1]) - 1;
+                if (num < 0 || num > 12) {
+                    yield return "sendtochaterror Specified number too " + (num < 0 ? "low" : "high");
+                    yield break;
+                }
+                int[] relData = {};
+                switch (currentlyDisplayed) {
+                    case 0: relData = dataA; break;
+                    case 1: relData = dataB; break;
+                    case 2: relData = dataC; break;
+                }
+                if (num + 1 < relData[0] || num + 1 > relData[1]) {
+                    yield return "sendtochaterror Specified number outside the bounds of shown pair";
+                    yield return "unsubmittablepenalty";
+                } else {
+                    while (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[num]) > 7.5f) {
+                        yield return new WaitForSeconds(.1f);
+                    }
+                    Submit.OnInteract();
+                }
+            } else {
+                yield return "sendtochaterror " + (parts.Length == 1 ? "Not enough" : "Too many") + " parameters for press command";
+                yield break;
+            }
+        } //idk if i should have another sendtochaterror within an else that's "i don't understand" or whatever or if that's just a feature of TP that does it for you already
+    }
 }
