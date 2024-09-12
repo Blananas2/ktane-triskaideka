@@ -6,6 +6,8 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using KModkit;
 using Rnd = UnityEngine.Random;
+using System.ComponentModel;
+using Newtonsoft.Json.Converters;
 
 public class triskaidekaScript : MonoBehaviour {
 
@@ -183,6 +185,7 @@ public class triskaidekaScript : MonoBehaviour {
     }
 
     int[] generatePair() {
+
         RerollPair:
 
         int lowEnd = Rnd.Range(1, 14); //generate numbers
@@ -267,18 +270,25 @@ public class triskaidekaScript : MonoBehaviour {
             while (elapsed < duration)
             {
                 Needle.transform.localRotation = Quaternion.Slerp(start, end, elapsed / duration); //this is the line that actually animates, it does a linear interpolation on the two rotations
-                if (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - server) < 7.5f) { //if the needle is within 7.5 degrees of the end marking, light up the LED accordingly
+                if (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - server) < 7.5f)
+                { //if the needle is within 7.5 degrees of the end marking, light up the LED accordingly
                     LED.material = Mats[serverShirt];
                     Light.color = Palette[serverShirt];
-                    if (cbActive) { CBSpriteSlot.sprite = CBSprites[serverShirt]; } 
-                } else if (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - opponent) < 7.5f) {
+                    if (cbActive)
+                        CBSpriteSlot.sprite = CBSprites[serverShirt];
+                }
+                else if (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - opponent) < 7.5f)
+                {
                     LED.material = Mats[opponentShirt];
                     Light.color = Palette[opponentShirt];
-                    if (cbActive) { CBSpriteSlot.sprite = CBSprites[opponentShirt]; } 
-                } else { //or if not, turn it off
+                    if (cbActive)
+                        CBSpriteSlot.sprite = CBSprites[opponentShirt];
+                }
+                else
+                { //or if not, turn it off
                     LED.material = Mats[6];
                     Light.color = Palette[6];
-                    if (cbActive) { CBSpriteSlot.sprite = null; } 
+                    CBSpriteSlot.sprite = null;
                 }
                 yield return null;
                 elapsed += Time.deltaTime;
@@ -388,73 +398,137 @@ public class triskaidekaScript : MonoBehaviour {
     IEnumerator ProcessTwitchCommand(string command)
     {
         if (beeping) {
-            yield return "sendtochaterror You need to wait for the beeping to stop";
+            yield return "sendtochaterror You must wait for the beeping to stop.";
             yield break;
         }
-        string[] parts = command.Trim().ToLowerInvariant().Split(' ');
-        if (parts[0] == "press") { //feel free to also make it so the presses don't go through if it tries to go outside the range that's prolly nicer but eh
-            if (parts.Length == 2) {
-                switch (parts[1]) {
-                    case "left": Smalls[0].OnInteract(); break;
-                    case "right": Smalls[1].OnInteract(); break;
-                    default: 
-                        yield return "sendtochaterror Specified direction is not valid";
-                        yield break;
-                    break;
-                }
-            } else if (parts.Length == 3) {
-                if (parts[1] != parts[2]) {
-                    yield return "sendtochaterror Specified directions do not match";
-                    yield break;
-                }
-                switch (parts[1]) {
-                    case "left": 
-                        Smalls[0].OnInteract();
-                        yield return new WaitForSeconds(.4f);
-                        Smalls[0].OnInteract();
-                    break;
-                    case "right": 
-                        Smalls[1].OnInteract();
-                        yield return new WaitForSeconds(.4f);
-                        Smalls[1].OnInteract();
-                    break;
-                    default: 
-                        yield return "sendtochaterror Specified direction is not valid";
-                        yield break;
-                    break;
-                }
-            } else {
-                yield return "sendtochaterror " + (parts.Length == 1 ? "Not enough" : "Too many") + " parameters for press command";
+        var m = Regex.Match(command, @"^\s*press\s+(?<dir1>left|right)(\s+(?<dir2>left|right))?\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (m.Groups["dir2"].Value.Length == 0)
+            {
+                yield return null;
+                Smalls[m.Groups["dir1"].Value == "left" ? 0 : 1].OnInteract();
                 yield break;
             }
-        } else if (parts[0] == "submit") {
-            if (hasStruck) {
+            else
+            {
+                if (m.Groups["dir1"].Value != m.Groups["dir2"].Value)
+                {
+                    yield return "sendtochaterror Specified directions do not match.";
+                    yield break;
+                }
+                else
+                {
+                    yield return null;
+                    Smalls[m.Groups["dir1"].Value == "left" ? 0 : 1].OnInteract();
+                    yield return new WaitForSeconds(0.4f);
+                    Smalls[m.Groups["dir1"].Value == "left" ? 0 : 1].OnInteract();
+                    yield break;
+                }
+            }
+        }
+        m = Regex.Match(command, @"^\s*submit(\s+(?<num>(\d+)))?\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            if (hasStruck && m.Groups["num"].Value.Length == 0)
+            {
+                yield return null;
                 Submit.OnInteract();
-            } else if (parts.Length == 2) {
-                int num = Int32.Parse(parts[1]) - 1;
-                if (num < 0 || num > 12) {
-                    yield return "sendtochaterror Specified number too " + (num < 0 ? "low" : "high");
-                    yield break;
-                }
-                int[] relData = {};
-                switch (currentlyDisplayed) {
-                    case 0: relData = dataA; break;
-                    case 1: relData = dataB; break;
-                    case 2: relData = dataC; break;
-                }
-                if (num + 1 < relData[0] || num + 1 > relData[1]) {
-                    yield return "sendtochaterror Specified number outside the bounds of shown pair";
-                    yield return "unsubmittablepenalty";
-                } else {
-                    while (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[num]) > 7.5f) {
-                        yield return new WaitForSeconds(.1f);
-                    }
-                    Submit.OnInteract();
-                }
-            } else {
-                yield return "sendtochaterror " + (parts.Length == 1 ? "Not enough" : "Too many") + " parameters for press command";
                 yield break;
             }
-        } //idk if i should have another sendtochaterror within an else that's "i don't understand" or whatever or if that's just a feature of TP that does it for you already
+            int num;
+            if (!int.TryParse(m.Groups["num"].Value, out num))
+                yield break;
+            if (num < 1 || num > 12)
+            {
+                yield return "sendtochaterror Specified number too " + (num < 0 ? "low" : "high");
+                yield break;
+            }
+            var arrs = new[] { dataA, dataB, dataC }
+                .Select(i => Enumerable.Range(i[0], i[1] - i[0] + 1).ToArray())
+                .Select(i => i.First() == 1 && i.Last() == 13 ? new[] { 1, 13 } : i)
+                .ToArray();
+            var relData = currentlyDisplayed == 0 ? arrs[0].ToArray() : currentlyDisplayed == 1 ? arrs[1].ToArray() : arrs[2].ToArray();
+            if (!relData.Contains(num))
+            {
+                yield return "sendtochaterror Specified number outside the bounds of shown pair.";
+                yield return "unsubmittablepenalty";
+                yield break;
+            }
+            yield return null;
+            while (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[num]) > 7.5f)
+                yield return null;
+            Submit.OnInteract();
+            yield break;
+        }
+        m = Regex.Match(command, @"^\s*colou?rblind|cb\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            cbActive = !cbActive;
+            yield break;
+        }
+    }
+
+    private IEnumerator TwitchHandleForcedSolve()
+    {
+        while (beeping)
+            yield return null;
+        if (hasStruck)
+        {
+            Submit.OnInteract();
+            yield return new WaitForSeconds(0.1f);
+        }
+        while (beeping)
+            yield return null;
+        while (submittedNumbers != 3)
+        {
+            var arrs = new[] { dataA, dataB, dataC }
+                .Select(i => Enumerable.Range(i[0], i[1] - i[0] + 1).ToArray())
+                .Select(i => i.First() == 1 && i.Last() == 13 ? new[] { 1, 13 } : i)
+                .ToArray();
+            var acceptablePositions = Enumerable.Range(0, 3).Where(i => arrs[i].Contains(correctNumbers[submittedNumbers])).ToArray();
+            if (!acceptablePositions.Contains(currentlyDisplayed))
+            {
+                if (currentlyDisplayed == 0)
+                {
+                    Smalls[1].OnInteract();
+                    yield return new WaitForSeconds(0.4f);
+                    if (!acceptablePositions.Contains(1))
+                    {
+                        Smalls[1].OnInteract();
+                        yield return new WaitForSeconds(0.4f);
+                    }
+                }
+                else if (currentlyDisplayed == 1)
+                {
+                    if (acceptablePositions.Contains(0))
+                    {
+                        Smalls[0].OnInteract();
+                        yield return new WaitForSeconds(0.4f);
+                    }
+                    else
+                    {
+                        Smalls[1].OnInteract();
+                        yield return new WaitForSeconds(0.4f);
+                    }
+                }
+                else
+                {
+                    Smalls[0].OnInteract();
+                    yield return new WaitForSeconds(0.4f);
+                    if (!acceptablePositions.Contains(1))
+                    {
+                        Smalls[0].OnInteract();
+                        yield return new WaitForSeconds(0.4f);
+                    }
+                }
+            }
+            while (!(Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[correctNumbers[submittedNumbers] - 1]) < 7.5f))
+                yield return null;
+            Submit.OnInteract();
+            yield return new WaitForSeconds(0.4f);
+        }
+        yield break;
     }
 }
