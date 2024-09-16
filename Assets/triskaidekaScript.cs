@@ -439,9 +439,9 @@ public class triskaidekaScript : MonoBehaviour {
             int num;
             if (!int.TryParse(m.Groups["num"].Value, out num))
                 yield break;
-            if (num < 1 || num > 12)
+            if (num < 1 || num > 13)
             {
-                yield return "sendtochaterror Specified number too " + (num < 0 ? "low" : "high");
+                yield return "sendtochaterror Specified number too " + (num < 1 ? "low" : "high");
                 yield break;
             }
             var arrs = new[] { dataA, dataB, dataC }
@@ -452,11 +452,13 @@ public class triskaidekaScript : MonoBehaviour {
             if (!relData.Contains(num))
             {
                 yield return "sendtochaterror Specified number outside the bounds of shown pair.";
-                yield return "unsubmittablepenalty";
+                if (!IsRightHalf(currentlyDisplayed == 0 ? dataA : currentlyDisplayed == 1 ? dataB : dataC)) {
+                    yield return "unsubmittablepenalty";
+                }
                 yield break;
             }
             yield return null;
-            while (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[num]) > 7.5f)
+            while (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[num - 1]) > 7.5f)
                 yield return null;
             Submit.OnInteract();
             yield break;
