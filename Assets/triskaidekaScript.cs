@@ -163,15 +163,13 @@ public class triskaidekaScript : MonoBehaviour {
         dataB = generatePair();
         dataC = generatePair();
 
-        if (!SetIsValid(dataA, dataB, dataC)) { //if we can't submit any of the answers in the ranges given we have to reroll the whole set
+        if (!SetIsValid(dataA, dataB, dataC))
+        { //if we can't submit any of the answers in the ranges given we have to reroll the whole set
             attempts++;
             goto RerollSet;
         }
 
         Debug.LogFormat("<Triskaideka #{0}> Generated in {1} attempts", moduleId, attempts);
-        Debug.Log("A: " + dataA.Join(", "));
-        Debug.Log("B: " + dataB.Join(", "));
-        Debug.Log("C: " + dataC.Join(", "));
         Debug.LogFormat("[Triskaideka #{0}] The needle moves between {1} with a {2} flash and {3} with a {4} flash.", moduleId, dataA[0], colorNames[dataA[2]], dataA[1], colorNames[dataA[3]]);
         Debug.LogFormat("[Triskaideka #{0}] After a right press, the needle moves between {1} with a {2} flash and {3} with a {4} flash.", moduleId, dataB[0], colorNames[dataB[2]], dataB[1], colorNames[dataB[3]]);
         Debug.LogFormat("[Triskaideka #{0}] After another right press, the needle moves between {1} with a {2} flash and {3} with a {4} flash.", moduleId, dataC[0], colorNames[dataC[2]], dataC[1], colorNames[dataC[3]]);
@@ -335,25 +333,32 @@ public class triskaidekaScript : MonoBehaviour {
             StartCoroutine(CommenceBeepage(offBy));
             return;
         }
-        if (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[correctNumbers[submittedNumbers] - 1]) < 7.5f) { //if we're within 7.5 degrees of the correct angle, that's good
+        float diff = (float)Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[correctNumbers[submittedNumbers] - 1]);
+        if (diff < 7.5f || (rightHalf && (360f - diff < 3.25f))) //if we're within 7.5 degrees of the correct angle, that's good
+        { 
             Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.BigButtonPress, transform);
-            if (rightHalf && correctNumbers[submittedNumbers] != 1 && correctNumbers[submittedNumbers] != 13) { //if we're on the right half and it isn't 1 or 13, play the horn
+            if (rightHalf && correctNumbers[submittedNumbers] != 1 && correctNumbers[submittedNumbers] != 13)
+            { //if we're on the right half and it isn't 1 or 13, play the horn
                 Audio.PlaySoundAtTransform("doot doot", transform);
                 StartCoroutine(SpeakerVibe(0.282f));
                 return;
             }
             Debug.LogFormat("[Triskaideka #{0}] {1} submit is good{2}.", moduleId, ordinals[submittedNumbers], submittedNumbers == 2 ? ", module solved" : "");
             submittedNumbers++;
-            if (submittedNumbers == 3) { //solve mod if all three are good
+            if (submittedNumbers == 3)
+            { //solve mod if all three are good
                 StopAllCoroutines();
                 Module.HandlePass();
                 moduleSolved = true;
                 LED.material = Mats[7]; //set the LED to pink
                 Light.color = Palette[7];
-                if (cbActive) { CBSpriteSlot.sprite = CBSprites[7]; } 
+                if (cbActive) { CBSpriteSlot.sprite = CBSprites[7]; }
             }
-        } else { //otherwise strike it
-            if (rightHalf) { //if we're on the right half, play the horn instead of striking
+        }
+        else
+        { //otherwise strike it
+            if (rightHalf)
+            { //if we're on the right half, play the horn instead of striking
                 Audio.PlaySoundAtTransform("doot doot", transform);
                 StartCoroutine(SpeakerVibe(0.282f));
                 return;
