@@ -1,16 +1,12 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using KModkit;
 using Rnd = UnityEngine.Random;
-using System.ComponentModel;
-using Newtonsoft.Json.Converters;
 
-public class triskaidekaScript : MonoBehaviour {
-
+public class triskaidekaScript : MonoBehaviour
+{
     public KMBombModule Module;
     public KMAudio Audio;
     public KMColorblindMode Colorblind;
@@ -140,17 +136,20 @@ public class triskaidekaScript : MonoBehaviour {
     int moduleId;
     private bool moduleSolved;
 
-    void Awake () {
+    void Awake()
+    {
         moduleId = moduleIdCounter++;
 
-        foreach (KMSelectable Small in Smalls) {
+        foreach (KMSelectable Small in Smalls)
+        {
             Small.OnInteract += delegate () { SmallPress(Small); return false; };
         }
 
         Submit.OnInteract += delegate () { SubmitPress(); return false; };
     }
 
-    void Start () {
+    void Start()
+    {
         cbActive = Colorblind.ColorblindModeActive; //standard cb procedure
         Debug.LogFormat("<Triskaideka #{0}> Colorblind mode: {1}", moduleId, cbActive);
 
@@ -182,75 +181,90 @@ public class triskaidekaScript : MonoBehaviour {
         rightHalf = IsRightHalf(dataA);
     }
 
-    int[] generatePair() {
+    int[] generatePair()
+    {
 
         RerollPair:
 
         int lowEnd = Rnd.Range(1, 14); //generate numbers
         int highEnd;
         do { highEnd = Rnd.Range(1, 14); }
-            while (highEnd == lowEnd); //they cannot be the same, since we need the needle to move back and forth, not stay in the same place
-        if (lowEnd > highEnd) { //if they're in the wrong order, swap them: the below is a trick to swap without creating a new variable using xor
+        while (highEnd == lowEnd); //they cannot be the same, since we need the needle to move back and forth, not stay in the same place
+        if (lowEnd > highEnd)
+        { //if they're in the wrong order, swap them: the below is a trick to swap without creating a new variable using xor
             lowEnd = lowEnd ^ highEnd;
             highEnd = lowEnd ^ highEnd;
             lowEnd = lowEnd ^ highEnd;
         }
-        
+
         int colorLow = Rnd.Range(0, 6); //generate colors
         int colorHigh;
-        do { colorHigh = Rnd.Range(0, 6); } 
-            while (colorHigh % 3 == colorLow % 3); //if color's arrows point in opposite directions, there'll be too much overlap (if they point at each other) or not any (if not) which doesn't work, regenerate high
+        do { colorHigh = Rnd.Range(0, 6); }
+        while (colorHigh % 3 == colorLow % 3); //if color's arrows point in opposite directions, there'll be too much overlap (if they point at each other) or not any (if not) which doesn't work, regenerate high
 
-        if (NumberColorPairDoesntExist(lowEnd, colorLow) || NumberColorPairDoesntExist(highEnd, colorHigh)) { //if the number/color pair is not in the diagram, reroll
+        if (NumberColorPairDoesntExist(lowEnd, colorLow) || NumberColorPairDoesntExist(highEnd, colorHigh))
+        { //if the number/color pair is not in the diagram, reroll
             attempts++;
             goto RerollPair;
         }
 
         bool found = false; //find the intersection
         int intersection = -1;
-        for (int d = 0; d < diag.Length; d++) {
-            if (diag[d][colorLow] == lowEnd && diag[d][colorHigh] == highEnd) {
+        for (int d = 0; d < diag.Length; d++)
+        {
+            if (diag[d][colorLow] == lowEnd && diag[d][colorHigh] == highEnd)
+            {
                 found = true; //if we find one it must be the only intersection, proven by exhaustion (all pairs of lines form parallelograms which is analogous to a square grid)
                 intersection = diag[d][6];
                 break;
             }
         }
-        if (found) {
+        if (found)
+        {
             return new int[] { lowEnd, highEnd, colorLow, colorHigh, intersection };
-        } else {
+        }
+        else
+        {
             attempts++;
             goto RerollPair; //if no such intersection exists, reroll
         }
     }
 
-    bool NumberColorPairDoesntExist(int n, int c) {
-        switch (n) {
+    bool NumberColorPairDoesntExist(int n, int c)
+    {
+        switch (n)
+        {
             case 1: return c % 2 == 0; //there's no 1 arrows that are red, yellow, or blue
             case 13: return c % 2 == 1; //there's no 13 arrows that are orange, green, or purple
             default: return false; //anything else is fine
         }
     }
 
-    bool SetIsValid(int[] da, int[] db, int[] dc) {
+    bool SetIsValid(int[] da, int[] db, int[] dc)
+    {
         bool[] validPositions = { false, false, false, false, false, false, false, false, false, false, false, false, false };
         int lowPos = -1;
         int highPos = -1;
-        for (int xd = 0; xd < 3; xd++) {
-            switch (xd) {
+        for (int xd = 0; xd < 3; xd++)
+        {
+            switch (xd)
+            {
                 case 0: lowPos = da[0] - 1; highPos = da[1]; break; //from the three ranges given (subtracting 1 from the former but not the latter is deliberate, the below "if" needs to take that into account tho)
                 case 1: lowPos = db[0] - 1; highPos = db[1]; break;
                 case 2: lowPos = dc[0] - 1; highPos = dc[1]; break;
             }
             if (lowPos == 0 && highPos == 13) { validPositions[0] = true; validPositions[12] = true; continue; } //if the ends are at the extremes, the needle uses the right half of the mod instead, only allow ends
-            for (int p = lowPos; p < highPos; p++) { //set all their in-between positions to be valid
+            for (int p = lowPos; p < highPos; p++)
+            { //set all their in-between positions to be valid
                 validPositions[p] = true;
             }
         }
 
-        return validPositions[da[4]-1] && validPositions[db[4]-1] && validPositions[dc[4]-1]; //just logical AND them together, if any is false it returns false
+        return validPositions[da[4] - 1] && validPositions[db[4] - 1] && validPositions[dc[4] - 1]; //just logical AND them together, if any is false it returns false
     }
 
-    private IEnumerator Tennis(int[] given) { //yes im using tennis terms because i thought it was funny you're just gonna have to deal with that
+    private IEnumerator Tennis(int[] given)
+    { //yes im using tennis terms because i thought it was funny you're just gonna have to deal with that
         float server = Angles[given[0] - 1];
         float opponent = Angles[given[1] - 1];
         var serverPlacement = Quaternion.Euler(0f, server, 0f);
@@ -261,7 +275,8 @@ public class triskaidekaScript : MonoBehaviour {
         float court = server - opponent;
 
         float elapsed = court / 150f; //at the beginning we want to be in the middle of the movement, this elapsed being exactly half means the animation starts at the halfway point
-        while (true) {
+        while (true)
+        {
             float duration = court / 75f;
             var start = birdie ? serverPlacement : opponentPlacement;
             var end = birdie ? opponentPlacement : serverPlacement;
@@ -297,10 +312,12 @@ public class triskaidekaScript : MonoBehaviour {
         }
     }
 
-    void SmallPress(KMSelectable Small) {
+    void SmallPress(KMSelectable Small)
+    {
         Small.AddInteractionPunch(0.25f);
         if (moduleSolved || beeping) { Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform); return; } //do nothing if mod is solved or beeping
-        if (Small == Smalls[0]) {
+        if (Small == Smalls[0])
+        {
             if (currentlyDisplayed == 0) { Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform); return; } //do nothing if we try to go back from 0
             Audio.PlaySoundAtTransform("creepy", transform);
             currentlyDisplayed--;
@@ -308,7 +325,9 @@ public class triskaidekaScript : MonoBehaviour {
             StopAllCoroutines();
             StartCoroutine(SpeakerVibe(0.382f));
             StartCoroutine(Tennis(currentlyDisplayed == 0 ? dataA : dataB));
-        } else {
+        }
+        else
+        {
             if (currentlyDisplayed == 2) { Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform); return; } //do nothing if we try to go forward from 2
             Audio.PlaySoundAtTransform("creepy", transform);
             currentlyDisplayed++;
@@ -319,23 +338,37 @@ public class triskaidekaScript : MonoBehaviour {
         }
     }
 
-    void SubmitPress() {
+    private int selectedVal = -1;
+
+    private void Update()
+    {
+        var a = Enumerable.Range(0, 12).Where(i => !(Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[i]) >= 7.6f)).ToArray();
+        if (a.Length == 0)
+            return;
+        var num = a.First() + 1;
+        if (selectedVal != num)
+            selectedVal = num;
+    }
+
+    void SubmitPress()
+    {
         Submit.AddInteractionPunch(1f);
         if (beeping) { return; } //do nothing if mod is beeping
-        if (moduleSolved) {
+        if (moduleSolved)
+        {
             Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, transform); //play correct chime if solved
             StartCoroutine(SpeakerVibe(0.7f));
             return;
         }
-        if (hasStruck) { //if we just struck, beep now
+        if (hasStruck)
+        { //if we just struck, beep now
             beeping = true;
             hasStruck = false;
             StartCoroutine(CommenceBeepage(offBy));
             return;
         }
-        float diff = (float)Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[correctNumbers[submittedNumbers] - 1]);
-        if (diff < 7.5f || (rightHalf && (360f - diff < 3.25f))) //if we're within 7.5 degrees of the correct angle, that's good
-        { 
+        if (correctNumbers[submittedNumbers] == selectedVal)
+        {
             Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.BigButtonPress, transform);
             if (rightHalf && correctNumbers[submittedNumbers] != 1 && correctNumbers[submittedNumbers] != 13)
             { //if we're on the right half and it isn't 1 or 13, play the horn
@@ -363,18 +396,19 @@ public class triskaidekaScript : MonoBehaviour {
                 StartCoroutine(SpeakerVibe(0.282f));
                 return;
             }
-            int thisThingy = 13 - (int)Math.Round(Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable / 15f)); //calculate how off we were by for the beep function to use
-            offBy = Math.Abs(thisThingy - correctNumbers[submittedNumbers]);
-            Debug.LogFormat("[Triskaideka #{0}] {1} submit is not good, it's at {2} which means you're off by {3}. Strike!", moduleId, ordinals[submittedNumbers], thisThingy, offBy);
+            offBy = Math.Abs(selectedVal - correctNumbers[submittedNumbers]);
+            Debug.LogFormat("[Triskaideka #{0}] {1} submit is not good, it's at {2} which means you're off by {3}. Strike!", moduleId, ordinals[submittedNumbers], selectedVal, offBy);
             Module.HandleStrike();
             hasStruck = true;
             StartCoroutine(SpeakerVibe(1f));
         }
     }
 
-    private IEnumerator SpeakerVibe(float time) {
+    private IEnumerator SpeakerVibe(float time)
+    {
         float elapsed = 0f;
-        while (elapsed < time) { //while we're under the time given
+        while (elapsed < time)
+        { //while we're under the time given
             Speaker.transform.localScale = new Vector3(10f, 10.5f, 10f); //stretch the y scale a bit
             Speaker.transform.localRotation = Quaternion.Euler(-90f, 0f, Rnd.Range(0, 360) * 1f); //rotate to a random angle (it doesn't look as random as i woulda hoped but whatever it still looks neat)
             yield return null;
@@ -383,8 +417,10 @@ public class triskaidekaScript : MonoBehaviour {
         Speaker.transform.localScale = new Vector3(10f, 10f, 10f); //once done put the y scale back to normal
     }
 
-    private IEnumerator CommenceBeepage(int numberOfTimes) {
-        for (int b = 0; b < numberOfTimes; b++) { //just use a for loop for beeping the specified number of times, nothing too fancy
+    private IEnumerator CommenceBeepage(int numberOfTimes)
+    {
+        for (int b = 0; b < numberOfTimes; b++)
+        { //just use a for loop for beeping the specified number of times, nothing too fancy
             Audio.PlaySoundAtTransform("BEEP", transform);
             StartCoroutine(SpeakerVibe(0.7f));
             yield return new WaitForSeconds(1.381f);
@@ -392,17 +428,19 @@ public class triskaidekaScript : MonoBehaviour {
         beeping = false;
     }
 
-    bool IsRightHalf (int[] x) { //right half is just are the two ends the extremes at the moment, if so we can play the horn
+    bool IsRightHalf(int[] x)
+    { //right half is just are the two ends the extremes at the moment, if so we can play the horn
         return x[0] == 1 && x[1] == 13;
     }
 
-    #pragma warning disable 414
+#pragma warning disable 414
     private readonly string TwitchHelpMessage = @"!{0} press left/right [Presses the left/right red button, direction can be repeated to press twice] | !{0} submit # [Presses submit button at specified position, position can be omitted to press the button after a strike]";
-    #pragma warning restore 414
-    
+#pragma warning restore 414
+
     IEnumerator ProcessTwitchCommand(string command)
     {
-        if (beeping) {
+        if (beeping)
+        {
             yield return "sendtochaterror You must wait for the beeping to stop.";
             yield break;
         }
@@ -457,14 +495,16 @@ public class triskaidekaScript : MonoBehaviour {
             if (!relData.Contains(num))
             {
                 yield return "sendtochaterror Specified number outside the bounds of shown pair.";
-                if (!IsRightHalf(currentlyDisplayed == 0 ? dataA : currentlyDisplayed == 1 ? dataB : dataC)) {
+                if (!IsRightHalf(currentlyDisplayed == 0 ? dataA : currentlyDisplayed == 1 ? dataB : dataC))
+                {
                     yield return "unsubmittablepenalty";
                 }
                 yield break;
             }
             yield return null;
-            while (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[num - 1]) > 7.5f)
+            while (selectedVal != num)
                 yield return null;
+            Debug.Log("submitting num: " + num);
             Submit.OnInteract();
             yield break;
         }
