@@ -183,7 +183,6 @@ public class triskaidekaScript : MonoBehaviour
 
     int[] generatePair()
     {
-
         RerollPair:
 
         int lowEnd = Rnd.Range(1, 14); //generate numbers
@@ -342,12 +341,15 @@ public class triskaidekaScript : MonoBehaviour
 
     private void Update()
     {
-        var a = Enumerable.Range(0, 12).Where(i => !(Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[i]) >= 7.6f)).ToArray();
+        var a = Enumerable.Range(0, 12).Where(i => Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[i]) <= 7.6f).ToArray();
         if (a.Length == 0)
             return;
-        var num = a.First() + 1;
+        var num = a.Last() + 1;
         if (selectedVal != num)
+        {
             selectedVal = num;
+            Debug.Log(selectedVal);   
+        }
     }
 
     void SubmitPress()
@@ -504,7 +506,6 @@ public class triskaidekaScript : MonoBehaviour
             yield return null;
             while (selectedVal != num)
                 yield return null;
-            Debug.Log("submitting num: " + num);
             Submit.OnInteract();
             yield break;
         }
