@@ -22,7 +22,8 @@ public class triskaidekaScript : MonoBehaviour
     public SpriteRenderer CBSpriteSlot;
     public Sprite[] CBSprites;
 
-    int[][] diag = new int[][] { //this represents the whole diagram: { arrow numbers for Red, Orange, Yellow, Green, Blue, Purple, number in the triangle }
+    private readonly int[][] diag = new int[][] {
+        //this represents the whole diagram: { arrow numbers for Red, Orange, Yellow, Green, Blue, Purple, number in the triangle }
         new int[] { 13, 1, -1, 1, 13, -1, 9 }, //these -1s here mean there is no Yellow 1 arrow for example, I use -1 all throughout this code when I have to put a value but it doesn't make sense to give it one
         new int[] { 12, 1, 2, 2, 13, 12, 7 },
         new int[] { 11, 1, 3, 3, 13, 11, 5 },
@@ -115,45 +116,44 @@ public class triskaidekaScript : MonoBehaviour
         new int[] { 12, 12, 13, 2, 2, 1, 9 },
         new int[] { 13, -1, 13, 1, -1, 1, 4 }
     };
-    int attempts = 1;
-    string[] colorNames = { "Red", "Orange", "Yellow", "Green", "Blue", "Purple" };
-    float[] Angles = { 180f, 165.75f, 150.75f, 134.5f, 120.8f, 105.65f, 90f, 75.65f, 60.8f, 45.5f, 30.75f, 15.75f, 0f }; //these angles were determined by the placement of the markings which aren't necessarily 15n
-    const float moronicVariable = 360f / (float)Math.PI; //for some really stupid reason, i need to take the atan of the raw value then multiply by this thing to get the actual angle value
-    int currentlyDisplayed = 0;
-    int[] dataA;
-    int[] dataB;
-    int[] dataC;
-    bool hasStruck = false;
-    bool beeping = false;
-    int submittedNumbers = 0;
-    bool cbActive = false;
-    int[] correctNumbers = { -1, -1, -1 };
-    int offBy = -1;
-    string[] ordinals = { "First", "Second", "Third" };
-    bool rightHalf = false;
+    private int attempts = 1;
+    private static readonly string[] colorNames = { "Red", "Orange", "Yellow", "Green", "Blue", "Purple" };
+    private static readonly float[] angles = { 180f, 165.75f, 150.75f, 134.5f, 120.8f, 105.65f, 90f, 75.65f, 60.8f, 45.5f, 30.75f, 15.75f, 0f }; //these angles were determined by the placement of the markings which aren't necessarily 15n
+    private static readonly string[] ordinals = { "First", "Second", "Third" };
 
-    static int moduleIdCounter = 1;
-    int moduleId;
+    private int currentlyDisplayed = 0;
+    private int[] dataA;
+    private int[] dataB;
+    private int[] dataC;
+    private bool hasStruck = false;
+    private bool beeping = false;
+    private int submittedNumbers = 0;
+    private bool cbActive = false;
+    private int[] correctNumbers = { -1, -1, -1 };
+    private int offBy = -1;
+    private bool rightHalf = false;
+    private float needleAngle;
+
+    private static int moduleIdCounter = 1;
+    private int moduleId;
     private bool moduleSolved;
 
-    void Awake()
+    private void Awake()
     {
         moduleId = moduleIdCounter++;
 
-        foreach (KMSelectable Small in Smalls)
-        {
-            Small.OnInteract += delegate () { SmallPress(Small); return false; };
-        }
+        foreach (var small in Smalls)
+            small.OnInteract += delegate () { SmallPress(small); return false; };
 
         Submit.OnInteract += delegate () { SubmitPress(); return false; };
     }
 
-    void Start()
+    private void Start()
     {
         cbActive = Colorblind.ColorblindModeActive; //standard cb procedure
         Debug.LogFormat("<Triskaideka #{0}> Colorblind mode: {1}", moduleId, cbActive);
 
-        float scalar = transform.lossyScale.x; //standard light procedure: all lights must be scaled based on the scale of the bomb
+        var scalar = transform.lossyScale.x; //standard light procedure: all lights must be scaled based on the scale of the bomb
         Light.range *= scalar;
 
         RerollSet:
@@ -163,7 +163,8 @@ public class triskaidekaScript : MonoBehaviour
         dataC = generatePair();
 
         if (!SetIsValid(dataA, dataB, dataC))
-        { //if we can't submit any of the answers in the ranges given we have to reroll the whole set
+        {
+            //if we can't submit any of the answers in the ranges given we have to reroll the whole set
             attempts++;
             goto RerollSet;
         }
@@ -181,35 +182,37 @@ public class triskaidekaScript : MonoBehaviour
         rightHalf = IsRightHalf(dataA);
     }
 
-    int[] generatePair()
+    private int[] generatePair()
     {
         RerollPair:
 
-        int lowEnd = Rnd.Range(1, 14); //generate numbers
+        var lowEnd = Rnd.Range(1, 14); //generate numbers
         int highEnd;
         do { highEnd = Rnd.Range(1, 14); }
         while (highEnd == lowEnd); //they cannot be the same, since we need the needle to move back and forth, not stay in the same place
         if (lowEnd > highEnd)
-        { //if they're in the wrong order, swap them: the below is a trick to swap without creating a new variable using xor
-            lowEnd = lowEnd ^ highEnd;
-            highEnd = lowEnd ^ highEnd;
-            lowEnd = lowEnd ^ highEnd;
+        {
+            //if they're in the wrong order, swap them: the below is a trick to swap without creating a new variable using xor
+            lowEnd ^= highEnd;
+            highEnd ^= lowEnd;
+            lowEnd ^= highEnd;
         }
 
-        int colorLow = Rnd.Range(0, 6); //generate colors
+        var colorLow = Rnd.Range(0, 6); //generate colors
         int colorHigh;
         do { colorHigh = Rnd.Range(0, 6); }
         while (colorHigh % 3 == colorLow % 3); //if color's arrows point in opposite directions, there'll be too much overlap (if they point at each other) or not any (if not) which doesn't work, regenerate high
 
         if (NumberColorPairDoesntExist(lowEnd, colorLow) || NumberColorPairDoesntExist(highEnd, colorHigh))
-        { //if the number/color pair is not in the diagram, reroll
+        {
+            //if the number/color pair is not in the diagram, reroll
             attempts++;
             goto RerollPair;
         }
 
-        bool found = false; //find the intersection
-        int intersection = -1;
-        for (int d = 0; d < diag.Length; d++)
+        var found = false; //find the intersection
+        var intersection = -1;
+        for (var d = 0; d < diag.Length; d++)
         {
             if (diag[d][colorLow] == lowEnd && diag[d][colorHigh] == highEnd)
             {
@@ -229,7 +232,7 @@ public class triskaidekaScript : MonoBehaviour
         }
     }
 
-    bool NumberColorPairDoesntExist(int n, int c)
+    private bool NumberColorPairDoesntExist(int n, int c)
     {
         switch (n)
         {
@@ -239,12 +242,12 @@ public class triskaidekaScript : MonoBehaviour
         }
     }
 
-    bool SetIsValid(int[] da, int[] db, int[] dc)
+    private bool SetIsValid(int[] da, int[] db, int[] dc)
     {
         bool[] validPositions = { false, false, false, false, false, false, false, false, false, false, false, false, false };
-        int lowPos = -1;
-        int highPos = -1;
-        for (int xd = 0; xd < 3; xd++)
+        var lowPos = -1;
+        var highPos = -1;
+        for (var xd = 0; xd < 3; xd++)
         {
             switch (xd)
             {
@@ -253,8 +256,9 @@ public class triskaidekaScript : MonoBehaviour
                 case 2: lowPos = dc[0] - 1; highPos = dc[1]; break;
             }
             if (lowPos == 0 && highPos == 13) { validPositions[0] = true; validPositions[12] = true; continue; } //if the ends are at the extremes, the needle uses the right half of the mod instead, only allow ends
-            for (int p = lowPos; p < highPos; p++)
-            { //set all their in-between positions to be valid
+            for (var p = lowPos; p < highPos; p++)
+            {
+                //set all their in-between positions to be valid
                 validPositions[p] = true;
             }
         }
@@ -263,33 +267,34 @@ public class triskaidekaScript : MonoBehaviour
     }
 
     private IEnumerator Tennis(int[] given)
-    { //yes im using tennis terms because i thought it was funny you're just gonna have to deal with that
-        float server = Angles[given[0] - 1];
-        float opponent = Angles[given[1] - 1];
-        var serverPlacement = Quaternion.Euler(0f, server, 0f);
-        var opponentPlacement = Quaternion.Euler(0f, opponent, 0f);
-        int serverShirt = given[2];
-        int opponentShirt = given[3];
-        bool birdie = Rnd.Range(0, 2) == 0; //randomly choose a direction (up/down)
-        float court = server - opponent;
+    {
+        //yes im using tennis terms because i thought it was funny you're just gonna have to deal with that
+        var serverAngle = angles[given[0] - 1];
+        var opponentAngle = angles[given[1] - 1];
+        var serverShirt = given[2];
+        var opponentShirt = given[3];
+        var birdie = Rnd.Range(0, 2) == 0; //randomly choose a direction (up/down)
+        var court = serverAngle - opponentAngle;
 
-        float elapsed = court / 150f; //at the beginning we want to be in the middle of the movement, this elapsed being exactly half means the animation starts at the halfway point
+        var elapsed = court / 150f; //at the beginning we want to be in the middle of the movement, this elapsed being exactly half means the animation starts at the halfway point
         while (true)
         {
-            float duration = court / 75f;
-            var start = birdie ? serverPlacement : opponentPlacement;
-            var end = birdie ? opponentPlacement : serverPlacement;
+            var duration = court / 75f;
+            var start = birdie ? serverAngle : opponentAngle;
+            var end = birdie ? opponentAngle : serverAngle;
             while (elapsed < duration)
             {
-                Needle.transform.localRotation = Quaternion.Slerp(start, end, elapsed / duration); //this is the line that actually animates, it does a linear interpolation on the two rotations
-                if (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - server) < 7.5f)
-                { //if the needle is within 7.5 degrees of the end marking, light up the LED accordingly
+                needleAngle = Mathf.Lerp(start, end, elapsed / duration);
+                Needle.transform.localRotation = Quaternion.Euler(0, needleAngle, 0);
+                if (Math.Abs(needleAngle - serverAngle) < 7.5f)
+                {
+                    //if the needle is within 7.5 degrees of the end marking, light up the LED accordingly
                     LED.material = Mats[serverShirt];
                     Light.color = Palette[serverShirt];
                     if (cbActive)
                         CBSpriteSlot.sprite = CBSprites[serverShirt];
                 }
-                else if (Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - opponent) < 7.5f)
+                else if (Math.Abs(needleAngle - opponentAngle) < 7.5f)
                 {
                     LED.material = Mats[opponentShirt];
                     Light.color = Palette[opponentShirt];
@@ -297,7 +302,8 @@ public class triskaidekaScript : MonoBehaviour
                         CBSpriteSlot.sprite = CBSprites[opponentShirt];
                 }
                 else
-                { //or if not, turn it off
+                {
+                    //or if not, turn it off
                     LED.material = Mats[6];
                     Light.color = Palette[6];
                     CBSpriteSlot.sprite = null;
@@ -305,13 +311,13 @@ public class triskaidekaScript : MonoBehaviour
                 yield return null;
                 elapsed += Time.deltaTime;
             }
-            Needle.transform.localRotation = end;
+            Needle.transform.localRotation = Quaternion.Euler(0, end, 0);
             birdie = !birdie; //invert direction and start from the beginning once we're over duration
             elapsed = 0f;
         }
     }
 
-    void SmallPress(KMSelectable Small)
+    private void SmallPress(KMSelectable Small)
     {
         Small.AddInteractionPunch(0.25f);
         if (moduleSolved || beeping) { Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform); return; } //do nothing if mod is solved or beeping
@@ -337,22 +343,7 @@ public class triskaidekaScript : MonoBehaviour
         }
     }
 
-    private int selectedVal = -1;
-
-    private void Update()
-    {
-        var a = Enumerable.Range(0, 12).Where(i => Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[i]) <= 7.6f).ToArray();
-        if (a.Length == 0)
-            return;
-        var num = a.Last() + 1;
-        if (selectedVal != num)
-        {
-            selectedVal = num;
-            Debug.Log(selectedVal);   
-        }
-    }
-
-    void SubmitPress()
+    private void SubmitPress()
     {
         Submit.AddInteractionPunch(1f);
         if (beeping) { return; } //do nothing if mod is beeping
@@ -363,7 +354,8 @@ public class triskaidekaScript : MonoBehaviour
             return;
         }
         if (hasStruck)
-        { //if we just struck, beep now
+        {
+            //if we just struck, beep now
             beeping = true;
             hasStruck = false;
             StartCoroutine(CommenceBeepage(offBy));
@@ -373,7 +365,8 @@ public class triskaidekaScript : MonoBehaviour
         {
             Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.BigButtonPress, transform);
             if (rightHalf && correctNumbers[submittedNumbers] != 1 && correctNumbers[submittedNumbers] != 13)
-            { //if we're on the right half and it isn't 1 or 13, play the horn
+            {
+                //if we're on the right half and it isn't 1 or 13, play the horn
                 Audio.PlaySoundAtTransform("doot doot", transform);
                 StartCoroutine(SpeakerVibe(0.282f));
                 return;
@@ -381,7 +374,8 @@ public class triskaidekaScript : MonoBehaviour
             Debug.LogFormat("[Triskaideka #{0}] {1} submit is good{2}.", moduleId, ordinals[submittedNumbers], submittedNumbers == 2 ? ", module solved" : "");
             submittedNumbers++;
             if (submittedNumbers == 3)
-            { //solve mod if all three are good
+            {
+                //solve mod if all three are good
                 StopAllCoroutines();
                 Module.HandlePass();
                 moduleSolved = true;
@@ -391,9 +385,11 @@ public class triskaidekaScript : MonoBehaviour
             }
         }
         else
-        { //otherwise strike it
+        {
+            //otherwise strike it
             if (rightHalf)
-            { //if we're on the right half, play the horn instead of striking
+            {
+                //if we're on the right half, play the horn instead of striking
                 Audio.PlaySoundAtTransform("doot doot", transform);
                 StartCoroutine(SpeakerVibe(0.282f));
                 return;
@@ -408,9 +404,10 @@ public class triskaidekaScript : MonoBehaviour
 
     private IEnumerator SpeakerVibe(float time)
     {
-        float elapsed = 0f;
+        var elapsed = 0f;
         while (elapsed < time)
-        { //while we're under the time given
+        {
+            //while we're under the time given
             Speaker.transform.localScale = new Vector3(10f, 10.5f, 10f); //stretch the y scale a bit
             Speaker.transform.localRotation = Quaternion.Euler(-90f, 0f, Rnd.Range(0, 360) * 1f); //rotate to a random angle (it doesn't look as random as i woulda hoped but whatever it still looks neat)
             yield return null;
@@ -421,8 +418,9 @@ public class triskaidekaScript : MonoBehaviour
 
     private IEnumerator CommenceBeepage(int numberOfTimes)
     {
-        for (int b = 0; b < numberOfTimes; b++)
-        { //just use a for loop for beeping the specified number of times, nothing too fancy
+        for (var b = 0; b < numberOfTimes; b++)
+        {
+            //just use a for loop for beeping the specified number of times, nothing too fancy
             Audio.PlaySoundAtTransform("BEEP", transform);
             StartCoroutine(SpeakerVibe(0.7f));
             yield return new WaitForSeconds(1.381f);
@@ -430,8 +428,9 @@ public class triskaidekaScript : MonoBehaviour
         beeping = false;
     }
 
-    bool IsRightHalf(int[] x)
-    { //right half is just are the two ends the extremes at the moment, if so we can play the horn
+    private bool IsRightHalf(int[] x)
+    {
+        //right half is just are the two ends the extremes at the moment, if so we can play the horn
         return x[0] == 1 && x[1] == 13;
     }
 
@@ -439,14 +438,14 @@ public class triskaidekaScript : MonoBehaviour
     private readonly string TwitchHelpMessage = @"!{0} press left/right [Presses the left/right red button, direction can be repeated to press twice] | !{0} submit # [Presses submit button at specified position, position can be omitted to press the button after a strike]";
 #pragma warning restore 414
 
-    IEnumerator ProcessTwitchCommand(string command)
+    private IEnumerator ProcessTwitchCommand(string command)
     {
         if (beeping)
         {
             yield return "sendtochaterror You must wait for the beeping to stop.";
             yield break;
         }
-        var m = Regex.Match(command, @"^\s*press\s+(?<dir1>left|right)(\s+(?<dir2>left|right))?\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        var m = Regex.Match(command, @"^\s*(?:press\s+)?(?<dir1>left|right)(?:\s+(?<dir2>left|right))?\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         if (m.Success)
         {
             if (m.Groups["dir2"].Value.Length == 0)
@@ -572,11 +571,22 @@ public class triskaidekaScript : MonoBehaviour
                     }
                 }
             }
-            while (!(Math.Abs(Math.Asin(Needle.transform.localRotation.y) * moronicVariable - Angles[correctNumbers[submittedNumbers] - 1]) < 7.5f))
+            while (!(Math.Abs(needleAngle - angles[correctNumbers[submittedNumbers] - 1]) < 7.5f))
                 yield return null;
             Submit.OnInteract();
             yield return new WaitForSeconds(0.4f);
         }
         yield break;
+    }
+
+    private int selectedVal
+    {
+        get
+        {
+            for (var i = 0; i < angles.Length; i++)
+                if (Math.Abs(needleAngle - angles[i]) < 7.5f)
+                    return i + 1;
+            return -1;
+        }
     }
 }
