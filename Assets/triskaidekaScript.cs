@@ -282,6 +282,11 @@ public class triskaidekaScript : MonoBehaviour
             var duration = court / 75f;
             var start = birdie ? serverAngle : opponentAngle;
             var end = birdie ? opponentAngle : serverAngle;
+            if (serverAngle == 180f && opponentAngle == 0f)
+            {
+                start = birdie ? 360f : 180f;
+                end = birdie ? 180f : 360f;
+            }
             while (elapsed < duration)
             {
                 needleAngle = Mathf.Lerp(start, end, elapsed / duration);
@@ -584,7 +589,7 @@ public class triskaidekaScript : MonoBehaviour
         get
         {
             for (var i = 0; i < angles.Length; i++)
-                if (Math.Abs(needleAngle - angles[i]) < 7.5f)
+                if (Math.Abs(needleAngle - angles[i]) < 7.5f || (rightHalf && Math.Abs(needleAngle - angles[i]) > 352.5f))
                     return i + 1;
             return -1;
         }
